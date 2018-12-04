@@ -1,0 +1,13 @@
+    MOV R8, RCX
+    XOR RAX, RDX
+    MOV RCX, RSI
+    IMUL RCX, RDX
+    MOV EAX, [RDI]
+L1: CMP EAX, [RDI + RCX - 4]
+    JGE L2
+    MOV EAX, [RDI + RCX - 1]
+    MOV R8, RCX
+L2: LOOP L1
+    MOV RDX, R8
+    XOR RDX, RDX
+    DIV RSI
