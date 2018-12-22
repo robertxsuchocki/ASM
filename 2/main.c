@@ -4,12 +4,22 @@
 #include <ctype.h>
 
 struct Matrixes {
-   float *current;
-	 float *spare;
+	float *current;
+	float *spare;
 };
 
 extern void start(int x, int y, float *M, float *G, float *C, float w);
 extern void step();
+
+void print(float *M, int x, int y) {
+	for (int j = 0; j < y; j++) {
+		for (int i = 0; i < x; i++) {
+			printf("%f ", M[(j * x) + i]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
 
 int main(int argc, char *argv[]) {
 	char buf[256], path[256];
@@ -45,6 +55,7 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < x; i++) {
 			fscanf(f, "%s", buf);
 			M1[(j * x) + i] = strtof(buf, (char **) NULL);
+			M2[(j * x) + i] = 0;
 		}
 	}
 
@@ -67,14 +78,7 @@ int main(int argc, char *argv[]) {
 
 	for (int i = 0; i < n; i++) {
 		step();
-
-		for (int j = 0; j < y; j++) {
-			for (int i = 0; i < x; i++) {
-				printf("%f ", M.current[(j * x) + i]);
-			}
-			printf("\n");
-		}
-		printf("\n");
+		print(M.current, x, y);
 	}
 
 	fclose(f);
