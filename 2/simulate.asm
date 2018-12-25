@@ -20,9 +20,9 @@ start:
     mov     dword [y], esi
     mov     qword [M], rdx
     mov     rax, [rdx]
-    mov     qword [M1], rax
+    mov     qword [M1], rax     ; M1 - pointer to the first matrix
     mov     rax, [rdx + 8]
-    mov     qword [M2], rax
+    mov     qword [M2], rax     ; M2 - pointer to the second matrix
     mov     qword [G], rcx
     mov     qword [C], r8
     movss   dword [w], xmm0
@@ -38,9 +38,6 @@ step:
     mov     eax, dword [x]
     sal     eax, 2
     mov     dword [rbp - 16], eax ; gap - offset difference between rows
-
-    mov     r8, qword [M1]
-    mov     r9, qword [M2]
 
 .copy_loop:
     mov     edx, dword [x]
@@ -61,8 +58,6 @@ step:
     jmp     .copy_loop
 
 .post_copy_loop:
-    mov     r8, qword [M1]
-    mov     r9, qword [M2]
     mov     dword [rbp - 8], 0
 
 .outer_row_loop:
@@ -87,12 +82,15 @@ step:
     mulps   xmm0, xmm1
 
 ; upper row update
-    cmp     dword [rbp - 8], 0
-    jle     .lower_row_update
-
     mov     rdx, qword [M2]
     movsxd  rcx, dword [rbp - 12]
     add     rdx, rcx
+    movups  xmm1, [rdx]
+    subps   xmm1, xmm0
+    movups  [rdx], xmm1
+    cmp     dword [rbp - 8], 0
+    jle     .lower_row_update
+
     movsxd  rcx, dword [rbp - 16]
     sub     rdx, rcx
     movups  xmm1, [rdx]
@@ -100,14 +98,17 @@ step:
     movups  [rdx], xmm1
 
 .lower_row_update:
+    mov     rdx, qword [M2]
+    movsxd  rcx, dword [rbp - 12]
+    add     rdx, rcx
+    movups  xmm1, [rdx]
+    subps   xmm1, xmm0
+    movups  [rdx], xmm1
     mov     eax, dword [y]
     sub     eax, 1
     cmp     dword [rbp - 8], eax
     jge     .left_column_update
 
-    mov     rdx, qword [M2]
-    movsxd  rcx, dword [rbp - 12]
-    add     rdx, rcx
     movsxd  rcx, dword [rbp - 16]
     add     rdx, rcx
     movups  xmm1, [rdx]
@@ -118,8 +119,12 @@ step:
     mov     rdx, qword [M2]
     movsxd  rcx, dword [rbp - 12]
     add     rdx, rcx
+    mov     rcx, rdx
     sub     rdx, 4
     movups  xmm2, xmm0
+    movups  xmm1, [rcx]
+    subps   xmm1, xmm2
+    movups  [rcx], xmm1
     cmp     dword [rbp - 4], 0
     jne     .left_column_addition
 
@@ -139,8 +144,12 @@ step:
     mov     rdx, qword [M2]
     movsxd  rcx, dword [rbp - 12]
     add     rdx, rcx
+    mov     rcx, rdx
     add     rdx, 4
     movups  xmm2, xmm0
+    movups  xmm1, [rcx]
+    subps   xmm1, xmm2
+    movups  [rcx], xmm1
     mov     eax, dword [x]
     sub     eax, 4
     cmp     dword [rbp - 4], eax
@@ -160,15 +169,7 @@ step:
     movups  [rdx], xmm1
 
 .heaters_update:
-    cmp     dword [rbp - 8], 0
-    je      .heaters_addition
-    mov     eax, dword [y]
-    sub     eax, 1
-    cmp     dword [rbp - 8], eax
-    jl      .post_updates
-
-.heaters_addition:
-    mov     rax, qword [C]
+    mov     rax, qword [G]
     movsxd  rdx, dword [rbp - 4]
     sal     rdx, 2
     add     rax, rdx
@@ -176,6 +177,23 @@ step:
     movss   xmm3, dword [w]
     shufps  xmm3, xmm3, 0x00
     mulps   xmm4, xmm3
+
+.upper_heater:
+    cmp     dword [rbp - 8], 0
+    jne      .lower_heater
+
+    mov     rax, qword [M2]
+    movsxd  rdx, dword [rbp - 12]
+    add     rax, rdx
+    movups  xmm3, [rax]
+    addps   xmm3, xmm4
+    movups  [rax], xmm3
+
+.lower_heater:
+    mov     eax, dword [y]
+    sub     eax, 1
+    cmp     dword [rbp - 8], eax
+    jne     .post_updates
 
     mov     rax, qword [M2]
     movsxd  rdx, dword [rbp - 12]
@@ -194,6 +212,46 @@ step:
     jmp     .outer_row_loop
 
 .post_outer_row_loop:
+    mov     dword [rbp - 8], 0
+    mov     dword [rbp - 12], 0
+
+.cooling_loop:
+    mov     eax, dword [y]
+    cmp     dword [rbp - 8], eax
+    jge     .swap
+
+    mov     rax, qword [C]
+    movsx   rdx, dword [rbp - 8]
+    sal     rdx, 2
+    add     rax, rdx
+    movss   xmm0, dword [rax]
+    movss   xmm1, dword [w]
+    mulss   xmm0, xmm1
+
+    mov     rdx, qword [M2]
+    movsxd  rcx, dword [rbp - 12]
+    add     rdx, rcx
+    movss   xmm1, dword [rdx]
+    addss   xmm1, xmm0
+    movss   dword [rdx], xmm1
+
+    mov     rdx, qword [M2]
+    movsxd  rcx, dword [rbp - 12]
+    add     rdx, rcx
+    movsxd  rcx, dword [x]
+    sub     rcx, 1
+    imul    rcx, 4
+    add     rdx, rcx
+    movss   xmm1, dword [rdx]
+    addss   xmm1, xmm0
+    movss   dword [rdx], xmm1
+
+    mov     eax, dword [rbp - 16]
+    add     dword [rbp - 12], eax
+    add     dword [rbp - 8], 1
+    jmp     .cooling_loop
+
+.swap:
     mov     rax, qword [M1]
     mov     rdx, qword [M2]
     mov     qword [M1], rdx
