@@ -1,13 +1,14 @@
 section .bss
-    i   resb 4
-    x   resb 4
-    y   resb 4
-    M   resb 8
-    M1  resb 8
-    M2  resb 8
-    G   resb 8
-    C   resb 8
-    w   resb 4
+    i       resb 4
+    x       resb 4
+    x_real  resb 4
+    y       resb 4
+    M       resb 8
+    M1      resb 8
+    M2      resb 8
+    G       resb 8
+    C       resb 8
+    w       resb 4
 
 section .text
     global start
@@ -26,6 +27,20 @@ start:
     mov     qword [G], rcx
     mov     qword [C], r8
     movss   dword [w], xmm0
+
+    mov     eax, edi
+    mov     ecx, eax
+
+.calculate_real_x_value:
+    mov     eax, ecx
+    and     eax, 3
+    test    eax, eax
+    je      .return
+    add     ecx, 1
+    jmp     .calculate_real_x_value
+
+.return:
+    mov     dword [x_real], ecx
     leave
     ret
 
@@ -35,12 +50,12 @@ step:
     mov     dword [rbp - 4], 0    ; i - number of column
     mov     dword [rbp - 8], 0    ; j - number of row
     mov     dword [rbp - 12], 0   ; offs - current cell offset
-    mov     eax, dword [x]
+    mov     eax, dword [x_real]
     sal     eax, 2
     mov     dword [rbp - 16], eax ; gap - offset difference between rows
 
 .copy_loop:
-    mov     edx, dword [x]
+    mov     edx, dword [x_real]
     mov     eax, dword [y]
     imul    eax, edx
     sal     eax, 2
@@ -68,7 +83,7 @@ step:
     mov     dword [rbp - 4], 0
 
 .inner_cell_loop:
-    mov     eax, dword [x]
+    mov     eax, dword [x_real]
     cmp     dword [rbp - 4], eax
     jge     .post_inner_cell_loop
 
@@ -150,7 +165,7 @@ step:
     movups  xmm1, [rcx]
     subps   xmm1, xmm2
     movups  [rcx], xmm1
-    mov     eax, dword [x]
+    mov     eax, dword [x_real]
     sub     eax, 4
     cmp     dword [rbp - 4], eax
     jl     .right_column_addition

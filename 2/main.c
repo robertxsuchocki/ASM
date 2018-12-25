@@ -11,11 +11,14 @@ struct Matrixes {
 extern void start(int x, int y, float *M, float *G, float *C, float w);
 extern void step();
 
-void print(float *M, int x, int y) {
+void print(float *M, int x, int x_real, int y) {
 	for (int j = 0; j < y; j++) {
 		for (int i = 0; i < x; i++) {
-			printf("%f ", M[(j * x) + i]);
+			printf("%f ", M[(j * x_real) + i]);
 		}
+        for (int i = x; i < x_real; i++) {
+            M[(j * x_real) + i] = 0;
+        }
 		printf("\n");
 	}
 	printf("\n");
@@ -24,7 +27,7 @@ void print(float *M, int x, int y) {
 int main(int argc, char *argv[]) {
 	char buf[256], path[256];
 	FILE *f;
-	int x, y, n;
+	int x, x_real, y, n;
 	float w;
 	struct Matrixes M;
 	float *M1, *M2, *G, *C;
@@ -45,24 +48,33 @@ int main(int argc, char *argv[]) {
 	fscanf(f, "%s", buf);
 	x = strtol(buf, (char **) NULL, 10);
 
+    x_real = (x % 4 == 0) ? x : (x + 4 - (x % 4));
+
 	fscanf(f, "%s", buf);
 	y = strtol(buf, (char **) NULL, 10);
 
 
-	M1 = (float *) malloc(x * y * sizeof(float));
-	M2 = (float *) malloc(x * y * sizeof(float));
+	M1 = (float *) malloc(x_real * y * sizeof(float));
+	M2 = (float *) malloc(x_real * y * sizeof(float));
 	for (int j = 0; j < y; j++) {
 		for (int i = 0; i < x; i++) {
 			fscanf(f, "%s", buf);
-			M1[(j * x) + i] = strtof(buf, (char **) NULL);
-			M2[(j * x) + i] = 0;
+			M1[(j * x_real) + i] = strtof(buf, (char **) NULL);
+			M2[(j * x_real) + i] = 0;
 		}
+        for (int i = x; i < x_real; i++) {
+            M1[(j * x_real) + i] = 0;
+            M2[(j * x_real) + i] = 0;
+        }
 	}
 
-	G = (float *) malloc(x * sizeof(float));
+	G = (float *) malloc(x_real * sizeof(float));
 	for (int i = 0; i < x; i++) {
 		fscanf(f, "%s", buf);
 		G[i] = strtof(buf, (char **) NULL);
+	}
+	for (int i = x; i < x_real; i++) {
+		G[i] = 0;
 	}
 
 	C = (float *) malloc(y * sizeof(float));
@@ -78,7 +90,7 @@ int main(int argc, char *argv[]) {
 
 	for (int i = 0; i < n; i++) {
 		step();
-		print(M.current, x, y);
+		print(M.current, x, x_real, y);
 	}
 
 	fclose(f);
