@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < n; i++) {
 		step();
 		print(M.current, x, x_real, y);
+		getchar();
 	}
 
 	fclose(f);
